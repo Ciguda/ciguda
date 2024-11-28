@@ -1869,63 +1869,31 @@
                         username: '',
                         password: ''
                     },
-                    customers: [
-                        {
-                            id: 1,
-                            name: 'John',
-                            surname: 'Doe',
-                            balance: 150,
-                            points: 0,
-                            productsOwed: [],
-                            lastPayment: '2023-10-01',
-                            transactions: [],
-                            owedItems: [],
-                            lentItems: [],
-                            createdAt: new Date(),
-                            updatedAt: new Date()
-                        }
-                    ],
-                    partners: [
-                        {
-                            id: 1, 
-                            name: 'Jane',
-                            surname: 'Smith',
-                            company: 'Example Co',
-                            contact: '123-456-7890',
-                            email: 'jane.smith@example.com',
-                            phone: '123-456-7890',
-                            address: '123 Main St, Anytown, USA',
-                            description: 'A loyal partner',
-                            owedItems: [],
-                            lentItems: [],
-                            owedItemsHistory: [],
-                            lentItemsHistory: [],
-                            isExpanded: false,
-                            createdAt: new Date()
-                        }
-                    ],
-                    prescriptions: [
-                        {
-                            id: 1,
-                            customerId: 1,
-                            prescriptionNumber: '123456', 
-                            date: new Date('2023-10-15'),
-                            medicine: 'Aspirin',
-                            dosage: '100mg',
-                            status: 'pending',
-                            customerName: 'John Doe',
-                            isExpanded: false
-                        }
-                    ],
+                    customers: [], // Clear customers
+                    
+                    partners: [], // Clear partners
+                    
+                    prescriptions: [], // Clear prescriptions
+                    
                     users: [
                         {
                             id: 1,
                             username: 'admin',
+                            password: 'admin', // In a real app, this should be hashed
                             email: 'admin@example.com',
-                            phone: '987-654-3210',
+                            phone: '',
+                            createdAt: new Date()
+                        },
+                        {
+                            id: 2,
+                            username: 'gapiman',
+                            password: 'galidis23', // In a real app, this should be hashed
+                            email: 'gapiman@example.com',
+                            phone: '',
                             createdAt: new Date()
                         }
                     ],
+                    
                     apothekeItems: [],
                     payments: [],
                     shifts: [],
@@ -2127,28 +2095,23 @@
                         new Date(event.date).toDateString() === date.toDateString()
                     );
                 },
-
                 getEvents(date) {
                     if (!date || !this.calendarEvents) return [];
                     return this.calendarEvents.filter(event => 
                         new Date(event.date).toDateString() === date.toDateString()
                     );
                 },
-
                 prevMonth() {
                     this.currentDate = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth() - 1);
                 },
-
                 nextMonth() {
                     this.currentDate = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth() + 1);
                 },
-
                 selectDate(date) {
                     if (!date) return;
                     // You can add functionality here to handle date selection
                     console.log('Selected date:', date);
                 },
-
                 addEvent() {
                     if (this.newEvent.date && this.newEvent.title) {
                         const event = {
@@ -2171,7 +2134,6 @@
                         };
                     }
                 },
-
                 addShift() {
                     if (this.newShift.date && this.newShift.assignedTo) {
                         const shift = {
@@ -2194,7 +2156,6 @@
                         };
                     }
                 },
-
                 addPayment() {
                     if (this.newPayment.date && this.newPayment.amount && this.newPayment.assignedTo) {
                         const payment = {
@@ -2219,8 +2180,79 @@
                         };
                     }
                 },
+                async importCustomersFromFile(event) {
+                    const file = event.target.files[0];
+                    if (!file) return;
 
-                // New methods added based on the plan
+                    try {
+                        const reader = new FileReader();
+                        
+                        reader.onload = async (e) => {
+                            const data = new Uint8Array(e.target.result);
+                            const workbook = XLSX.read(data, {type: 'array'});
+                            
+                            // Get first worksheet
+                            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                            
+                            // Convert to JSON
+                            const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                            
+                            // Process each row
+                            jsonData.forEach(row => {
+                                const customer = {
+                                    id: Date.now() + Math.random(), // Ensure unique ID
+                                    name: row['Name'] || row['ΟΝΟΜΑ'] || '',
+                                    surname: row['Surname'] || row['ΕΠΩΝΥΜΟ'] || '',
+                                    phone: row['Phone'] || row['ΤΗΛΕΦΩΝΟ'] || '',
+                                    email: row['Email'] || row['ΕΜΑΙΛ'] || '',
+                                    address: row['Address'] || row['ΔΙΕΥΘΥΝΣΗ'] || '',
+                                    description: row['Description'] || row['ΠΕΡΙΓΡΑΦΗ'] || '',
+                                    balance: 0,
+                                    points: 0,
+                                    transactions: [],
+                                    owedItems: [],
+                                    lentItems: [],
+                                    productsOwed: [],
+                                    createdAt: new Date(),
+                                    updatedAt: new Date()
+                                };
+                                
+                                // Only add if we have at least a name
+                                if (customer.name) {
+                                    this.customers.push(customer);
+                                }
+                            });
+                            
+                            // Close modal and show success message
+                            this.showImportCustomersModal = false;
+                            alert(`Successfully imported ${jsonData.length} customers`);
+                        };
+                        
+                        reader.readAsArrayBuffer(file);
+                        
+                    } catch (error) {
+                        console.error('Error importing customers:', error);
+                        alert('Error importing customers. Please check the file format.');
+                    }
+                },
+                downloadTemplate() {
+                    // Create worksheet with headers
+                    const ws = XLSX.utils.json_to_sheet([{
+                        'Name': '',
+                        'Surname': '',
+                        'Phone': '',
+                        'Email': '',
+                        'Address': '',
+                        'Description': ''
+                    }]);
+                    
+                    // Create workbook
+                    const wb = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(wb, ws, 'Customers Template');
+                    
+                    // Save file
+                    XLSX.writeFile(wb, 'customers_template.xlsx');
+                },
                 submitApothekeItem() {
                     if (this.newApothekeItem.name && this.newApothekeItem.location && this.newApothekeItem.quantity >= 0) {
                         const item = {
@@ -2244,7 +2276,6 @@
                         };
                     }
                 },
-
                 addStock() {
                     if (this.selectedApothekeItem && this.stockOperation.quantity > 0) {
                         this.selectedApothekeItem.quantity += parseInt(this.stockOperation.quantity);
@@ -2252,7 +2283,6 @@
                         this.stockOperation.quantity = 0;
                     }
                 },
-
                 withdrawStock() {
                     if (this.selectedApothekeItem && 
                         this.stockOperation.quantity > 0 && 
@@ -2264,15 +2294,28 @@
                         alert('Invalid quantity or insufficient stock');
                     }
                 },
-
                 setCurrentView(view) {
                     this.currentView = view;
                 },
                 
                 login() {
                     if (this.loginForm.username && this.loginForm.password) {
-                        this.isLoggedIn = true;
-                        this.isAdmin = this.loginForm.username === 'admin';
+                        // Check for admin
+                        if (this.loginForm.username === 'admin' && this.loginForm.password === 'admin') {
+                            this.isLoggedIn = true;
+                            this.isAdmin = true;
+                            return;
+                        }
+                        
+                        // Check for gapiman account
+                        if (this.loginForm.username === 'gapiman' && this.loginForm.password === 'galidis23') {
+                            this.isLoggedIn = true;
+                            this.isAdmin = false;
+                            return;
+                        }
+                        
+                        // If no match, show error
+                        alert('Invalid username or password');
                     }
                 },
                 formatDate(date) {
